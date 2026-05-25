@@ -803,59 +803,49 @@ p {
   animation: toastIn 260ms ease both;
 }
 
-.cutIn {
+.eatFeedback {
   position: fixed;
-  top: max(86px, calc(env(safe-area-inset-top) + 78px));
-  right: 8px;
+  top: max(78px, calc(env(safe-area-inset-top) + 70px));
+  right: 10px;
   z-index: 70;
-  width: min(50vw, 280px);
+  width: min(34vw, 168px);
+  display: grid;
+  justify-items: end;
+  gap: 2px;
   pointer-events: none;
-  animation: cutInSlam 1080ms cubic-bezier(0.18, 1.35, 0.32, 1) both;
+  animation: eatFeedbackPop 1000ms cubic-bezier(0.18, 1.35, 0.32, 1) both;
 }
 
-.cutIn img {
+.eatFeedback img {
   width: 100%;
   height: auto;
   display: block;
-  filter: drop-shadow(5px 7px 0 rgba(46, 26, 18, 0.34));
+  filter: drop-shadow(3px 4px 0 rgba(46, 26, 18, 0.34));
 }
 
-.pointPopup {
-  position: fixed;
-  top: max(188px, calc(env(safe-area-inset-top) + 178px));
-  right: 22px;
-  z-index: 72;
-  color: #ffcf3f;
-  font-size: clamp(2.4rem, 11vw, 5.2rem);
-  font-weight: 950;
-  line-height: 1;
-  text-shadow:
-    3px 0 #2e1a12,
-    -3px 0 #2e1a12,
-    0 3px #2e1a12,
-    0 -3px #2e1a12,
-    5px 6px 0 rgba(46, 26, 18, 0.42);
-  pointer-events: none;
-  animation: pointPop 1000ms cubic-bezier(0.18, 1.45, 0.35, 1) both;
-}
-
-.perfectComboBanner {
-  position: fixed;
-  top: max(78px, calc(env(safe-area-inset-top) + 72px));
-  left: 50%;
-  z-index: 73;
+.eatFeedbackCombo,
+.eatFeedbackPoints {
+  display: block;
   color: #fff8ec;
-  background: #f04835;
-  border: 3px solid #2e1a12;
-  border-radius: 8px;
-  padding: 8px 12px;
-  box-shadow: 5px 6px 0 rgba(46, 26, 18, 0.68);
-  font-size: clamp(1.25rem, 6vw, 2.5rem);
   font-weight: 950;
-  line-height: 1;
-  pointer-events: none;
-  transform: translateX(-50%);
-  animation: comboPulse 520ms cubic-bezier(0.18, 1.45, 0.35, 1) both;
+  line-height: 0.95;
+  text-align: right;
+  text-shadow:
+    2px 0 #2e1a12,
+    -2px 0 #2e1a12,
+    0 2px #2e1a12,
+    0 -2px #2e1a12,
+    3px 4px 0 rgba(46, 26, 18, 0.42);
+}
+
+.eatFeedbackCombo {
+  color: #f04835;
+  font-size: clamp(1rem, 4.8vw, 1.8rem);
+}
+
+.eatFeedbackPoints {
+  color: #ffcf3f;
+  font-size: clamp(1.35rem, 6.2vw, 2.5rem);
 }
 
 .resultScreen h1 {
@@ -994,14 +984,14 @@ p {
   }
 }
 
-@keyframes cutInSlam {
+@keyframes eatFeedbackPop {
   0% {
     opacity: 0;
-    transform: translateX(46px) translateY(-10px) scale(0.62) rotate(7deg);
+    transform: translateX(28px) translateY(-6px) scale(0.72) rotate(5deg);
   }
   18% {
     opacity: 1;
-    transform: translateX(0) translateY(0) scale(1.12) rotate(-2deg);
+    transform: translateX(0) translateY(0) scale(1.08) rotate(-1deg);
   }
   30% {
     transform: scale(1) rotate(0);
@@ -1012,44 +1002,7 @@ p {
   }
   100% {
     opacity: 0;
-    transform: translateX(34px) scale(0.92);
-  }
-}
-
-@keyframes pointPop {
-  0% {
-    opacity: 0;
-    transform: translateY(16px) scale(0.72) rotate(-4deg);
-  }
-  18% {
-    opacity: 1;
-    transform: translateY(0) scale(1.16) rotate(2deg);
-  }
-  32% {
-    transform: scale(1) rotate(0);
-  }
-  74% {
-    opacity: 1;
-    transform: translateY(-8px) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-34px) scale(0.9);
-  }
-}
-
-@keyframes comboPulse {
-  0% {
-    opacity: 0;
-    transform: translateX(-50%) translateY(-8px) scale(0.8) rotate(3deg);
-  }
-  55% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1.08) rotate(-1deg);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0) scale(1) rotate(0);
+    transform: translateX(22px) scale(0.92);
   }
 }
 

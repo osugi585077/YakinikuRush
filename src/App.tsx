@@ -43,6 +43,7 @@ type AudioEngine = {
   bgmVolume: number;
   seVolume: number;
   unlocked: boolean;
+  sePools: Partial<Record<"eatOk" | "eatNo" | "eatVege" | "drink", HTMLAudioElement[]>>;
   title: HTMLAudioElement;
   countdown: HTMLAudioElement;
   start: HTMLAudioElement;
@@ -55,6 +56,7 @@ type AudioEngine = {
   wait: HTMLAudioElement;
   result: HTMLAudioElement;
   scoreCount: HTMLAudioElement;
+  sizzle: HTMLAudioElement[];
   cooking: HTMLAudioElement | null;
 };
 
@@ -68,12 +70,22 @@ function createAudio(src: string, volume: number) {
   return audio;
 }
 
+function createAudioPool(src: string, volume: number, size = 4) {
+  return Array.from({ length: size }, () => createAudio(src, volume));
+}
+
 function getAudioEngine(ref: MutableRefObject<AudioEngine | null>) {
   if (!ref.current) {
     ref.current = {
       bgmVolume: DEFAULT_BGM_VOLUME,
       seVolume: DEFAULT_SE_VOLUME,
       unlocked: false,
+      sePools: {
+        eatOk: createAudioPool(ASSET_PATHS.audio.eatOk, DEFAULT_SE_VOLUME * 0.96),
+        eatNo: createAudioPool(ASSET_PATHS.audio.eatNo, DEFAULT_SE_VOLUME * 0.96),
+        eatVege: createAudioPool(ASSET_PATHS.audio.eatVege, DEFAULT_SE_VOLUME),
+        drink: createAudioPool(ASSET_PATHS.audio.drink, DEFAULT_SE_VOLUME * 0.95),
+      },
       title: createAudio(ASSET_PATHS.audio.title, DEFAULT_BGM_VOLUME * 0.7),
       countdown: createAudio(ASSET_PATHS.audio.countdown, DEFAULT_SE_VOLUME),
       start: createAudio(ASSET_PATHS.audio.start, DEFAULT_SE_VOLUME * 0.96),
@@ -86,10 +98,16 @@ function getAudioEngine(ref: MutableRefObject<AudioEngine | null>) {
       wait: createAudio(ASSET_PATHS.audio.wait, DEFAULT_BGM_VOLUME),
       result: createAudio(ASSET_PATHS.audio.result, DEFAULT_BGM_VOLUME * 0.95),
       scoreCount: createAudio(ASSET_PATHS.audio.scoreCount, DEFAULT_SE_VOLUME),
+      sizzle: ASSET_PATHS.audio.sizzle.map((source) =>
+        createAudio(source, DEFAULT_BGM_VOLUME * 0.65),
+      ),
       cooking: null,
     };
     ref.current.title.loop = true;
     ref.current.wait.loop = true;
+    ref.current.sizzle.forEach((audio) => {
+      audio.loop = true;
+    });
   }
 
   return ref.current;
@@ -102,6 +120,9 @@ function applyAudioVolumes(engine: AudioEngine) {
   if (engine.cooking) {
     engine.cooking.volume = engine.bgmVolume * 0.65;
   }
+  engine.sizzle.forEach((audio) => {
+    audio.volume = engine.bgmVolume * 0.65;
+  });
 
   engine.countdown.volume = engine.seVolume;
   engine.start.volume = engine.seVolume * 0.96;
@@ -112,9 +133,30 @@ function applyAudioVolumes(engine: AudioEngine) {
   engine.eatVege.volume = engine.seVolume;
   engine.drink.volume = engine.seVolume * 0.95;
   engine.scoreCount.volume = engine.seVolume;
+  engine.sePools.eatOk?.forEach((audio) => {
+    audio.volume = engine.seVolume * 0.96;
+  });
+  engine.sePools.eatNo?.forEach((audio) => {
+    audio.volume = engine.seVolume * 0.96;
+  });
+  engine.sePools.eatVege?.forEach((audio) => {
+    audio.volume = engine.seVolume;
+  });
+  engine.sePools.drink?.forEach((audio) => {
+    audio.volume = engine.seVolume * 0.95;
+  });
 }
 
 function playOneShot(audio: HTMLAudioElement) {
+  audio.pause();
+  audio.currentTime = 0;
+  void audio.play().catch(() => {});
+}
+
+function playPooledOneShot(pool: HTMLAudioElement[] | undefined) {
+  const audio = pool?.find((item) => item.paused) ?? pool?.[0];
+  if (!audio) return;
+
   audio.pause();
   audio.currentTime = 0;
   void audio.play().catch(() => {});
@@ -131,6 +173,13 @@ function getUnlockableAudio(engine: AudioEngine) {
     engine.eatVege,
     engine.drink,
     engine.scoreCount,
+    engine.wait,
+    engine.result,
+    ...engine.sizzle,
+    ...(engine.sePools.eatOk ?? []),
+    ...(engine.sePools.eatNo ?? []),
+    ...(engine.sePools.eatVege ?? []),
+    ...(engine.sePools.drink ?? []),
   ];
 }
 
@@ -158,7 +207,6 @@ function unlockAudio(engine: AudioEngine) {
 function stopCookingSound(engine: AudioEngine) {
   if (!engine.cooking) return;
 
-  engine.cooking.onended = null;
   engine.cooking.pause();
   engine.cooking.currentTime = 0;
   engine.cooking = null;
@@ -177,7 +225,9 @@ function stopWaitSound(engine: AudioEngine) {
 
 function startTitleSound(engine: AudioEngine) {
   if (!engine.title.paused) return;
-  engine.title.currentTime = 0;
+  if (engine.title.currentTime === 0 || engine.title.ended) {
+    engine.title.currentTime = 0;
+  }
   void engine.title.play().catch(() => {});
 }
 
@@ -187,17 +237,11 @@ function stopTitleSound(engine: AudioEngine) {
 }
 
 function playRandomCookingSound(engine: AudioEngine) {
-  const source =
-    ASSET_PATHS.audio.sizzle[
-      Math.floor(Math.random() * ASSET_PATHS.audio.sizzle.length)
-    ];
-  const audio = createAudio(source, engine.bgmVolume * 0.65);
+  const audio =
+    engine.sizzle[Math.floor(Math.random() * engine.sizzle.length)];
+  audio.volume = engine.bgmVolume * 0.65;
+  audio.currentTime = 0;
   engine.cooking = audio;
-  audio.onended = () => {
-    if (engine.cooking === audio) {
-      playRandomCookingSound(engine);
-    }
-  };
   void audio.play().catch(() => {});
 }
 
@@ -684,7 +728,9 @@ export default function App() {
     const nextMultiplier = getMultiplier(nextCombo);
     const earned = Math.round(baseScore * nextMultiplier);
     const engine = getAudioEngine(audioRef);
-    playOneShot(isComboLevel(level) ? engine.eatOk : engine.eatNo);
+    playPooledOneShot(
+      isComboLevel(level) ? engine.sePools.eatOk : engine.sePools.eatNo,
+    );
 
     setMeats((current) => current.filter((item) => item.id !== id));
     setScore((current) => {
@@ -772,24 +818,28 @@ export default function App() {
           {BEST_SCORE_TEXT}
         </div>
       )}
-      {cutInLevel !== null && (
-        <div className="cutIn" aria-hidden="true">
-          <img
-            src={ASSET_PATHS.cutIn[cutInLevel]}
-            alt=""
-            draggable={false}
-          />
-        </div>
-      )}
-      {pointPopup && (
-        <div className="pointPopup" key={pointPopup.id} aria-live="polite">
-          {pointPopup.points > 0 ? "+" : ""}
-          {pointPopup.points}
-        </div>
-      )}
-      {shouldShowPerfectCombo && (
-        <div className="perfectComboBanner" aria-live="polite">
-          {perfectCombo} COMBO
+      {(cutInLevel !== null || pointPopup) && (
+        <div
+          className="eatFeedback"
+          key={pointPopup?.id ?? cutInLevel ?? "feedback"}
+          aria-live="polite"
+        >
+          {cutInLevel !== null && (
+            <img
+              src={ASSET_PATHS.cutIn[cutInLevel]}
+              alt=""
+              draggable={false}
+            />
+          )}
+          {shouldShowPerfectCombo && (
+            <strong className="eatFeedbackCombo">{perfectCombo}COMBO</strong>
+          )}
+          {pointPopup && (
+            <span className="eatFeedbackPoints">
+              {pointPopup.points > 0 ? "+" : ""}
+              {pointPopup.points}
+            </span>
+          )}
         </div>
       )}
       <GameHud
@@ -810,9 +860,17 @@ export default function App() {
           onMeatDragStart={beginGrillDrag}
         />
         <div className="sideDishRow">
-          <VegetablePlate onEat={() => playOneShot(getAudioEngine(audioRef).eatVege)} />
+          <VegetablePlate
+            onEat={() =>
+              playPooledOneShot(getAudioEngine(audioRef).sePools.eatVege)
+            }
+          />
           <SaucePlate sauceRef={sauceRef} />
-          <BeerMug onDrink={() => playOneShot(getAudioEngine(audioRef).drink)} />
+          <BeerMug
+            onDrink={() =>
+              playPooledOneShot(getAudioEngine(audioRef).sePools.drink)
+            }
+          />
         </div>
       </div>
       <MeatPlates plates={PLATE_MEATS} onPlateDragStart={beginPlateDrag} />
