@@ -30,8 +30,8 @@ export const LEVEL_LABELS: Record<CookLevel, string> = {
 const LEVEL_THRESHOLDS: Record<MeatKind, [number, number, number]> = {
   tan: [1_500, 3_000, 5_000],
   karubi: [3_000, 6_000, 9_000],
-  harami: [5_000, 8_000, 12_000],
-  horumon: [7_000, 12_000, 17_000],
+  harami: [6_000, 10_000, 15_000],
+  horumon: [15_000, 20_000, 25_000],
 };
 
 const SCORE_BY_KIND_AND_LEVEL: Record<MeatKind, Record<CookLevel, number>> = {
