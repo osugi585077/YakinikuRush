@@ -47,6 +47,8 @@ type AudioEngine = {
   audioContext: AudioContext | null;
   sizzleBuffers: AudioBuffer[];
   sizzleBufferPromise: Promise<AudioBuffer[]> | null;
+  seBuffers: Partial<Record<"eatOk" | "eatNo" | "eatVege" | "drink", AudioBuffer>>;
+  seBufferPromise: Promise<void> | null;
   cookingGain: GainNode | null;
   cookingSource: AudioBufferSourceNode | null;
   cookingRequested: boolean;
@@ -108,6 +110,37 @@ async function loadSizzleBuffers(engine: AudioEngine) {
   return engine.sizzleBufferPromise;
 }
 
+async function loadSeBuffers(engine: AudioEngine) {
+  if (
+    engine.seBuffers.eatOk &&
+    engine.seBuffers.eatNo &&
+    engine.seBuffers.eatVege &&
+    engine.seBuffers.drink
+  ) {
+    return;
+  }
+
+  if (!engine.seBufferPromise) {
+    const context = getAudioContext(engine);
+    const entries = [
+      ["eatOk", ASSET_PATHS.audio.eatOk],
+      ["eatNo", ASSET_PATHS.audio.eatNo],
+      ["eatVege", ASSET_PATHS.audio.eatVege],
+      ["drink", ASSET_PATHS.audio.drink],
+    ] as const;
+
+    engine.seBufferPromise = Promise.all(
+      entries.map(async ([key, source]) => {
+        const response = await fetch(source);
+        const buffer = await response.arrayBuffer();
+        engine.seBuffers[key] = await context.decodeAudioData(buffer);
+      }),
+    ).then(() => undefined);
+  }
+
+  return engine.seBufferPromise;
+}
+
 function getAudioEngine(ref: MutableRefObject<AudioEngine | null>) {
   if (!ref.current) {
     ref.current = {
@@ -117,6 +150,8 @@ function getAudioEngine(ref: MutableRefObject<AudioEngine | null>) {
       audioContext: null,
       sizzleBuffers: [],
       sizzleBufferPromise: null,
+      seBuffers: {},
+      seBufferPromise: null,
       cookingGain: null,
       cookingSource: null,
       cookingRequested: false,
@@ -206,6 +241,33 @@ function playPooledOneShot(pool: HTMLAudioElement[] | undefined) {
   void audio.play().catch(() => {});
 }
 
+function playBufferedSe(
+  engine: AudioEngine,
+  key: "eatOk" | "eatNo" | "eatVege" | "drink",
+) {
+  const buffer = engine.seBuffers[key];
+  if (!buffer) {
+    playPooledOneShot(engine.sePools[key]);
+    return;
+  }
+
+  const context = getAudioContext(engine);
+  void context.resume().catch(() => {});
+
+  const source = context.createBufferSource();
+  const gain = context.createGain();
+  source.buffer = buffer;
+  gain.gain.value =
+    key === "drink"
+      ? engine.seVolume * 0.95
+      : key === "eatOk" || key === "eatNo"
+        ? engine.seVolume * 0.96
+        : engine.seVolume;
+  source.connect(gain);
+  gain.connect(context.destination);
+  source.start();
+}
+
 function unlockAudio(engine: AudioEngine) {
   if (engine.unlocked) return;
   engine.unlocked = true;
@@ -213,6 +275,7 @@ function unlockAudio(engine: AudioEngine) {
   const context = getAudioContext(engine);
   void context.resume().catch(() => {});
   void loadSizzleBuffers(engine).catch(() => {});
+  void loadSeBuffers(engine).catch(() => {});
 }
 
 function stopCookingSound(engine: AudioEngine) {
@@ -253,6 +316,13 @@ function startTitleSound(engine: AudioEngine) {
     engine.title.currentTime = 0;
   }
   void engine.title.play().catch(() => {});
+}
+
+function prepareTitleSound(engine: AudioEngine) {
+  if (engine.title.readyState === 0) {
+    engine.title.load();
+  }
+  startTitleSound(engine);
 }
 
 function stopTitleSound(engine: AudioEngine) {
@@ -414,12 +484,16 @@ export default function App() {
       if (phase !== "ready") return;
       const engine = getAudioEngine(audioRef);
       unlockAudio(engine);
-      startTitleSound(engine);
+      prepareTitleSound(engine);
     };
 
-    window.addEventListener("pointerdown", unlockTitleAudio, { once: true });
+    window.addEventListener("pointerdown", unlockTitleAudio);
+    window.addEventListener("click", unlockTitleAudio);
+    window.addEventListener("keydown", unlockTitleAudio);
     return () => {
       window.removeEventListener("pointerdown", unlockTitleAudio);
+      window.removeEventListener("click", unlockTitleAudio);
+      window.removeEventListener("keydown", unlockTitleAudio);
     };
   }, [phase]);
 
@@ -523,7 +597,7 @@ export default function App() {
 
   useEffect(() => {
     if (phase === "ready") {
-      startTitleSound(getAudioEngine(audioRef));
+      prepareTitleSound(getAudioEngine(audioRef));
       return;
     }
 
@@ -785,9 +859,7 @@ export default function App() {
     const nextMultiplier = getMultiplier(nextCombo);
     const earned = Math.round(baseScore * nextMultiplier);
     const engine = getAudioEngine(audioRef);
-    playPooledOneShot(
-      isComboLevel(level) ? engine.sePools.eatOk : engine.sePools.eatNo,
-    );
+    playBufferedSe(engine, isComboLevel(level) ? "eatOk" : "eatNo");
 
     setMeats((current) => current.filter((item) => item.id !== id));
     setScore((current) => {
@@ -905,13 +977,13 @@ export default function App() {
         <div className="sideDishRow">
           <VegetablePlate
             onEat={() =>
-              playPooledOneShot(getAudioEngine(audioRef).sePools.eatVege)
+              playBufferedSe(getAudioEngine(audioRef), "eatVege")
             }
           />
           <SaucePlate sauceRef={sauceRef} />
           <BeerMug
             onDrink={() =>
-              playPooledOneShot(getAudioEngine(audioRef).sePools.drink)
+              playBufferedSe(getAudioEngine(audioRef), "drink")
             }
           />
         </div>
