@@ -41,6 +41,7 @@ const ENDING_TEXT = "\u3054\u3061\u305d\u3046\u3055\u307e\u3067\u3057\u305f\uff0
 type AudioEngine = {
   bgmVolume: number;
   seVolume: number;
+  unlocked: boolean;
   title: HTMLAudioElement;
   countdown: HTMLAudioElement;
   start: HTMLAudioElement;
@@ -56,8 +57,8 @@ type AudioEngine = {
   cooking: HTMLAudioElement | null;
 };
 
-const DEFAULT_BGM_VOLUME = 0.65;
-const DEFAULT_SE_VOLUME = 0.85;
+const DEFAULT_BGM_VOLUME = 0.5;
+const DEFAULT_SE_VOLUME = 0.5;
 
 function createAudio(src: string, volume: number) {
   const audio = new Audio(src);
@@ -71,6 +72,7 @@ function getAudioEngine(ref: MutableRefObject<AudioEngine | null>) {
     ref.current = {
       bgmVolume: DEFAULT_BGM_VOLUME,
       seVolume: DEFAULT_SE_VOLUME,
+      unlocked: false,
       title: createAudio(ASSET_PATHS.audio.title, DEFAULT_BGM_VOLUME * 0.7),
       countdown: createAudio(ASSET_PATHS.audio.countdown, DEFAULT_SE_VOLUME),
       start: createAudio(ASSET_PATHS.audio.start, DEFAULT_SE_VOLUME * 0.96),
@@ -115,6 +117,41 @@ function playOneShot(audio: HTMLAudioElement) {
   audio.pause();
   audio.currentTime = 0;
   void audio.play().catch(() => {});
+}
+
+function getUnlockableAudio(engine: AudioEngine) {
+  return [
+    engine.countdown,
+    engine.start,
+    engine.kettei,
+    engine.finish,
+    engine.eatOk,
+    engine.eatNo,
+    engine.eatVege,
+    engine.drink,
+    engine.scoreCount,
+  ];
+}
+
+function unlockAudio(engine: AudioEngine) {
+  if (engine.unlocked) return;
+  engine.unlocked = true;
+
+  getUnlockableAudio(engine).forEach((audio) => {
+    const wasMuted = audio.muted;
+    audio.muted = true;
+    audio.currentTime = 0;
+    void audio
+      .play()
+      .then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      })
+      .catch(() => {})
+      .finally(() => {
+        audio.muted = wasMuted;
+      });
+  });
 }
 
 function stopCookingSound(engine: AudioEngine) {
@@ -263,10 +300,12 @@ export default function App() {
   useEffect(() => {
     const unlockTitleAudio = () => {
       if (phase !== "ready") return;
-      startTitleSound(getAudioEngine(audioRef));
+      const engine = getAudioEngine(audioRef);
+      unlockAudio(engine);
+      startTitleSound(engine);
     };
 
-    window.addEventListener("pointerdown", unlockTitleAudio);
+    window.addEventListener("pointerdown", unlockTitleAudio, { once: true });
     return () => {
       window.removeEventListener("pointerdown", unlockTitleAudio);
     };
@@ -439,6 +478,7 @@ export default function App() {
 
   function startGame(playStartSound = true) {
     const engine = getAudioEngine(audioRef);
+    unlockAudio(engine);
     stopCookingSound(engine);
     stopWaitSound(engine);
     stopTitleSound(engine);
