@@ -37,6 +37,7 @@ const BEST_SCORE_TEXT = "\u30d9\u30b9\u30c8\u30b9\u30b3\u30a2\u66f4\u65b0\uff01"
 const GUIDE_TEXT =
   "\u76bf\u306e\u8089\u3092\u7db2\u3078\u30c9\u30e9\u30c3\u30b0\u3002\u713c\u3051\u305f\u3089\u30bf\u30ec\u76bf\u3078\u3002";
 const ENDING_TEXT = "\u3054\u3061\u305d\u3046\u3055\u307e\u3067\u3057\u305f\uff01";
+const GAME_TICK_MS = 100;
 
 type AudioEngine = {
   bgmVolume: number;
@@ -58,7 +59,7 @@ type AudioEngine = {
 };
 
 const DEFAULT_BGM_VOLUME = 0.5;
-const DEFAULT_SE_VOLUME = 0.5;
+const DEFAULT_SE_VOLUME = 1;
 
 function createAudio(src: string, volume: number) {
   const audio = new Audio(src);
@@ -288,6 +289,9 @@ export default function App() {
   const [seVolume, setSeVolume] = useState(DEFAULT_SE_VOLUME);
   const nextMeatId = useRef(1);
   const lastTick = useRef<number | null>(null);
+  const tickRemainder = useRef(0);
+  const meatsRef = useRef<GrillMeat[]>([]);
+  const dragRef = useRef<DragState | null>(null);
   const grillRef = useRef<HTMLDivElement | null>(null);
   const sauceRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<AudioEngine | null>(null);
@@ -296,6 +300,14 @@ export default function App() {
   const countdownSoundNumberRef = useRef<number | null>(null);
 
   const multiplier = useMemo(() => getMultiplier(combo), [combo]);
+
+  useEffect(() => {
+    meatsRef.current = meats;
+  }, [meats]);
+
+  useEffect(() => {
+    dragRef.current = drag;
+  }, [drag]);
 
   useEffect(() => {
     const unlockTitleAudio = () => {
@@ -352,9 +364,18 @@ export default function App() {
       const previous = lastTick.current ?? now;
       const delta = now - previous;
       lastTick.current = now;
+      tickRemainder.current += delta;
+
+      if (tickRemainder.current < GAME_TICK_MS) {
+        frameId = window.requestAnimationFrame(tick);
+        return;
+      }
+
+      const elapsed = tickRemainder.current;
+      tickRemainder.current = 0;
 
       setTimeLeftMs((current) => {
-        const next = Math.max(0, current - delta);
+        const next = Math.max(0, current - elapsed);
         if (next === 0) {
           setPhase("ending");
         }
@@ -364,7 +385,7 @@ export default function App() {
       setMeats((current) =>
         current.map((meat) => ({
           ...meat,
-          ageMs: meat.ageMs + delta,
+          ageMs: meat.ageMs + elapsed,
         })),
       );
 
@@ -375,6 +396,7 @@ export default function App() {
     return () => {
       window.cancelAnimationFrame(frameId);
       lastTick.current = null;
+      tickRemainder.current = 0;
     };
   }, [phase]);
 
@@ -435,19 +457,43 @@ export default function App() {
     playOneShot(getAudioEngine(audioRef).result);
   }, [phase, score]);
 
+  const dragSource =
+    drag?.source.type === "plate"
+      ? `plate-${drag.source.plateId}`
+      : drag?.source.type === "grill"
+        ? `grill-${drag.source.id}`
+        : null;
+
   useEffect(() => {
     if (!drag) return;
 
-    const handleMove = (event: globalThis.PointerEvent) => {
+    let dragFrameId = 0;
+    let nextDragPoint = {
+      x: drag.x,
+      y: drag.y,
+    };
+
+    const updateDragPoint = () => {
+      dragFrameId = 0;
       setDrag((current) =>
         current
           ? {
               ...current,
-              x: event.clientX,
-              y: event.clientY,
+              ...nextDragPoint,
             }
           : null,
       );
+    };
+
+    const handleMove = (event: globalThis.PointerEvent) => {
+      nextDragPoint = {
+        x: event.clientX,
+        y: event.clientY,
+      };
+
+      if (dragFrameId === 0) {
+        dragFrameId = window.requestAnimationFrame(updateDragPoint);
+      }
     };
 
     const handleUp = (event: globalThis.PointerEvent) => {
@@ -462,8 +508,11 @@ export default function App() {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
+      if (dragFrameId !== 0) {
+        window.cancelAnimationFrame(dragFrameId);
+      }
     };
-  }, [drag, meats]);
+  }, [dragSource]);
 
   useEffect(() => {
     return () => {
@@ -502,6 +551,7 @@ export default function App() {
     setDrag(null);
     nextMeatId.current = 1;
     lastTick.current = null;
+    tickRemainder.current = 0;
   }
 
   function restartGame() {
@@ -523,6 +573,7 @@ export default function App() {
 
     if (phase === "paused") {
       lastTick.current = null;
+      tickRemainder.current = 0;
       setPhase("playing");
       if (meats.length === 0) {
         startWaitSound(engine);
@@ -561,6 +612,7 @@ export default function App() {
     setTimeLeftMs(GAME_DURATION_MS);
     setCountdownMs(COUNTDOWN_DURATION_MS);
     lastTick.current = null;
+    tickRemainder.current = 0;
   }
 
   function beginPlateDrag(
@@ -587,12 +639,14 @@ export default function App() {
   }
 
   function finishDrag(x: number, y: number) {
-    if (!drag || phase !== "playing") {
+    const currentDrag = dragRef.current;
+
+    if (!currentDrag || phase !== "playing") {
       setDrag(null);
       return;
     }
 
-    const source = drag.source;
+    const source = currentDrag.source;
 
     if (source.type === "plate" && pointIsInside(grillRef, x, y)) {
       setMeats((current) => {
@@ -621,7 +675,7 @@ export default function App() {
   }
 
   function eatMeat(id: number) {
-    const meat = meats.find((item) => item.id === id);
+    const meat = meatsRef.current.find((item) => item.id === id);
     if (!meat) return;
 
     const level = getCookLevel(meat.kind, meat.ageMs);
