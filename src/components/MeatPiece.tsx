@@ -86,7 +86,6 @@ export function MeatVisual({
         aria-hidden="true"
         draggable={false}
       />
-      <span className="meatLabel">{MEAT_LABELS[kind]}</span>
       {(level === 1 || level === 2) && <span className="sizzle" />}
     </button>
   );

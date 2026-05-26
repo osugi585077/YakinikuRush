@@ -664,6 +664,7 @@ export default function App() {
     };
 
     const handleMove = (event: globalThis.PointerEvent) => {
+      event.preventDefault();
       nextDragPoint = {
         x: event.clientX,
         y: event.clientY,
@@ -675,17 +676,24 @@ export default function App() {
     };
 
     const handleUp = (event: globalThis.PointerEvent) => {
+      event.preventDefault();
       finishDrag(event.clientX, event.clientY);
     };
 
-    window.addEventListener("pointermove", handleMove);
+    const blockTouchMove = (event: TouchEvent) => {
+      event.preventDefault();
+    };
+
+    window.addEventListener("pointermove", handleMove, { passive: false });
     window.addEventListener("pointerup", handleUp, { once: true });
     window.addEventListener("pointercancel", handleUp, { once: true });
+    window.addEventListener("touchmove", blockTouchMove, { passive: false });
 
     return () => {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
+      window.removeEventListener("touchmove", blockTouchMove);
       if (dragFrameId !== 0) {
         window.cancelAnimationFrame(dragFrameId);
       }
@@ -795,6 +803,7 @@ export default function App() {
     event: PointerEvent<HTMLElement>,
   ) {
     if (phase !== "playing") return;
+    event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     setDrag({
       source: { type: "plate", plateId: plate.plateId, kind: plate.kind },
@@ -805,6 +814,7 @@ export default function App() {
 
   function beginGrillDrag(id: number, event: PointerEvent<HTMLElement>) {
     if (phase !== "playing") return;
+    event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     setDrag({
       source: { type: "grill", id },
