@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { MutableRefObject, PointerEvent, RefObject } from "react";
+import type {
+  CSSProperties,
+  MutableRefObject,
+  PointerEvent,
+  RefObject,
+} from "react";
 import { GameHud } from "./components/GameHud";
 import { BeerMug } from "./components/BeerMug";
 import { Grill } from "./components/Grill";
@@ -62,6 +67,7 @@ type AudioEngine = {
   eatNo: HTMLAudioElement;
   eatVege: HTMLAudioElement;
   drink: HTMLAudioElement;
+  power: HTMLAudioElement;
   wait: HTMLAudioElement;
   result: HTMLAudioElement;
   scoreCount: HTMLAudioElement;
@@ -71,7 +77,17 @@ type AudioEngine = {
 
 const DEFAULT_BGM_VOLUME = 0.5;
 const DEFAULT_SE_VOLUME = 1;
-const STEAK_CHANCE = 0.1;
+const STEAK_CHANCE = 0.3;
+const GARLIC_SCORE_THRESHOLD = 3_000;
+const SCORE_BOOST_MS = 10_000;
+
+type GarlicItem = {
+  id: number;
+  x: number;
+  y: number;
+  driftX: number;
+  driftY: number;
+};
 
 type SeKey =
   | "countdown"
@@ -81,7 +97,8 @@ type SeKey =
   | "eatOk"
   | "eatNo"
   | "eatVege"
-  | "drink";
+  | "drink"
+  | "power";
 
 const SE_SOURCES: Record<SeKey, string> = {
   countdown: ASSET_PATHS.audio.countdown,
@@ -92,6 +109,7 @@ const SE_SOURCES: Record<SeKey, string> = {
   eatNo: ASSET_PATHS.audio.eatNo,
   eatVege: ASSET_PATHS.audio.eatVege,
   drink: ASSET_PATHS.audio.drink,
+  power: ASSET_PATHS.audio.power,
 };
 
 function createAudio(src: string, volume: number) {
@@ -176,6 +194,7 @@ function getAudioEngine(ref: MutableRefObject<AudioEngine | null>) {
         eatNo: createAudioPool(ASSET_PATHS.audio.eatNo, DEFAULT_SE_VOLUME * 0.96),
         eatVege: createAudioPool(ASSET_PATHS.audio.eatVege, DEFAULT_SE_VOLUME),
         drink: createAudioPool(ASSET_PATHS.audio.drink, DEFAULT_SE_VOLUME * 0.95),
+        power: createAudioPool(ASSET_PATHS.audio.power, DEFAULT_SE_VOLUME),
       },
       title: createAudio(ASSET_PATHS.audio.title, DEFAULT_BGM_VOLUME * 0.7),
       countdown: createAudio(ASSET_PATHS.audio.countdown, DEFAULT_SE_VOLUME),
@@ -186,6 +205,7 @@ function getAudioEngine(ref: MutableRefObject<AudioEngine | null>) {
       eatNo: createAudio(ASSET_PATHS.audio.eatNo, DEFAULT_SE_VOLUME * 0.96),
       eatVege: createAudio(ASSET_PATHS.audio.eatVege, DEFAULT_SE_VOLUME),
       drink: createAudio(ASSET_PATHS.audio.drink, DEFAULT_SE_VOLUME * 0.95),
+      power: createAudio(ASSET_PATHS.audio.power, DEFAULT_SE_VOLUME),
       wait: createAudio(ASSET_PATHS.audio.wait, DEFAULT_BGM_VOLUME),
       result: createAudio(ASSET_PATHS.audio.result, DEFAULT_BGM_VOLUME * 0.95),
       scoreCount: createAudio(ASSET_PATHS.audio.scoreCount, DEFAULT_SE_VOLUME),
@@ -226,6 +246,7 @@ function applyAudioVolumes(engine: AudioEngine) {
   engine.eatNo.volume = engine.seVolume * 0.96;
   engine.eatVege.volume = engine.seVolume;
   engine.drink.volume = engine.seVolume * 0.95;
+  engine.power.volume = engine.seVolume;
   engine.scoreCount.volume = engine.seVolume;
   engine.sePools.eatOk?.forEach((audio) => {
     audio.volume = engine.seVolume * 0.96;
@@ -238,6 +259,9 @@ function applyAudioVolumes(engine: AudioEngine) {
   });
   engine.sePools.drink?.forEach((audio) => {
     audio.volume = engine.seVolume * 0.95;
+  });
+  engine.sePools.power?.forEach((audio) => {
+    audio.volume = engine.seVolume;
   });
   engine.sePools.countdown?.forEach((audio) => {
     audio.volume = engine.seVolume;
@@ -427,6 +451,25 @@ function choosePlateMeatKind(kind: PlateMeat["kind"]) {
   return Math.random() < STEAK_CHANCE ? "steak" : kind;
 }
 
+function createGarlicItem(): GarlicItem {
+  const edge = Math.floor(Math.random() * 4);
+  const main = 14 + Math.random() * 72;
+  const position = [
+    { x: main, y: 16 },
+    { x: 84, y: main },
+    { x: main, y: 84 },
+    { x: 16, y: main },
+  ][edge];
+
+  return {
+    id: Date.now(),
+    x: position.x,
+    y: position.y,
+    driftX: Math.round((Math.random() * 34 - 17) * 10) / 10,
+    driftY: Math.round((Math.random() * 28 - 14) * 10) / 10,
+  };
+}
+
 function pointIsInside(
   ref: RefObject<HTMLElement | null>,
   x: number,
@@ -494,6 +537,8 @@ export default function App() {
   const [bestNoticeVisible, setBestNoticeVisible] = useState(false);
   const [bgmVolume, setBgmVolume] = useState(DEFAULT_BGM_VOLUME);
   const [seVolume, setSeVolume] = useState(DEFAULT_SE_VOLUME);
+  const [garlic, setGarlic] = useState<GarlicItem | null>(null);
+  const [scoreBoostActive, setScoreBoostActive] = useState(false);
   const nextMeatId = useRef(1);
   const lastTick = useRef<number | null>(null);
   const tickRemainder = useRef(0);
@@ -503,6 +548,9 @@ export default function App() {
   const sauceRef = useRef<HTMLDivElement | null>(null);
   const audioRef = useRef<AudioEngine | null>(null);
   const eatFeedbackTimerRef = useRef<number | null>(null);
+  const garlicSpawnedRef = useRef(false);
+  const scoreBoostActiveRef = useRef(false);
+  const scoreBoostTimerRef = useRef<number | null>(null);
 
   const multiplier = useMemo(() => getMultiplier(combo), [combo]);
 
@@ -513,6 +561,10 @@ export default function App() {
   useEffect(() => {
     dragRef.current = drag;
   }, [drag]);
+
+  useEffect(() => {
+    scoreBoostActiveRef.current = scoreBoostActive;
+  }, [scoreBoostActive]);
 
   useEffect(() => {
     const unlockTitleAudio = () => {
@@ -622,6 +674,8 @@ export default function App() {
     stopTitleSound(engine);
     playBufferedSe(engine, "finish");
     setDrag(null);
+    setGarlic(null);
+    clearScoreBoost();
 
     const timerId = window.setTimeout(() => {
       setPhase("finished");
@@ -740,6 +794,9 @@ export default function App() {
       if (eatFeedbackTimerRef.current !== null) {
         window.clearTimeout(eatFeedbackTimerRef.current);
       }
+      if (scoreBoostTimerRef.current !== null) {
+        window.clearTimeout(scoreBoostTimerRef.current);
+      }
     };
   }, []);
 
@@ -766,8 +823,11 @@ export default function App() {
     setCountdownMs(COUNTDOWN_DURATION_MS);
     setLastRunWasRecord(false);
     setBestNoticeVisible(false);
+    setGarlic(null);
+    clearScoreBoost();
     setDrag(null);
     nextMeatId.current = 1;
+    garlicSpawnedRef.current = false;
     lastTick.current = null;
     tickRemainder.current = 0;
   }
@@ -826,9 +886,12 @@ export default function App() {
     setPerfectCombo(0);
     setScoreEvent(null);
     setEatFeedback(null);
+    setGarlic(null);
+    clearScoreBoost();
     setDrag(null);
     setTimeLeftMs(GAME_DURATION_MS);
     setCountdownMs(COUNTDOWN_DURATION_MS);
+    garlicSpawnedRef.current = false;
     lastTick.current = null;
     tickRemainder.current = 0;
   }
@@ -903,7 +966,9 @@ export default function App() {
     const baseScore = getScore(meat.kind, level);
     const nextCombo = isComboLevel(level) && baseScore > 0 ? combo + 1 : 0;
     const nextMultiplier = getMultiplier(nextCombo);
-    const earned = Math.round(baseScore * nextMultiplier);
+    const comboScore = Math.round(baseScore * nextMultiplier);
+    const earned =
+      scoreBoostActiveRef.current && comboScore > 0 ? comboScore * 2 : comboScore;
     const engine = getAudioEngine(audioRef);
     playBufferedSe(engine, isComboLevel(level) ? "eatOk" : "eatNo");
 
@@ -916,6 +981,10 @@ export default function App() {
         setBestNoticeVisible(true);
         window.setTimeout(() => setBestNoticeVisible(false), 1800);
       }
+      if (!garlicSpawnedRef.current && nextScore >= GARLIC_SCORE_THRESHOLD) {
+        garlicSpawnedRef.current = true;
+        setGarlic(createGarlicItem());
+      }
       return nextScore;
     });
     setCombo(nextCombo);
@@ -924,7 +993,10 @@ export default function App() {
     setScoreEvent({
       label: `${MEAT_LABELS[meat.kind]} ${LEVEL_LABELS[level]}`,
       points: earned,
-      multiplier: nextMultiplier,
+      multiplier:
+        scoreBoostActiveRef.current && comboScore > 0
+          ? nextMultiplier * 2
+          : nextMultiplier,
     });
     showEatFeedback(level, earned, level === 2 ? perfectCombo + 1 : 0);
   }
@@ -953,6 +1025,34 @@ export default function App() {
     setEatFeedback(null);
   }
 
+  function collectGarlic() {
+    if (!garlic || phase !== "playing") return;
+    const engine = getAudioEngine(audioRef);
+    playBufferedSe(engine, "power");
+    setGarlic(null);
+    setScoreBoostActive(true);
+    scoreBoostActiveRef.current = true;
+
+    if (scoreBoostTimerRef.current !== null) {
+      window.clearTimeout(scoreBoostTimerRef.current);
+    }
+
+    scoreBoostTimerRef.current = window.setTimeout(() => {
+      setScoreBoostActive(false);
+      scoreBoostActiveRef.current = false;
+      scoreBoostTimerRef.current = null;
+    }, SCORE_BOOST_MS);
+  }
+
+  function clearScoreBoost() {
+    if (scoreBoostTimerRef.current !== null) {
+      window.clearTimeout(scoreBoostTimerRef.current);
+      scoreBoostTimerRef.current = null;
+    }
+    scoreBoostActiveRef.current = false;
+    setScoreBoostActive(false);
+  }
+
   if (phase === "ready") {
     return <StartScreen highScore={highScore} onStart={() => startGame()} />;
   }
@@ -975,6 +1075,14 @@ export default function App() {
   const draggingMeatId =
     drag?.source.type === "grill" ? drag.source.id : null;
   const isPaused = phase === "paused";
+  const garlicStyle = garlic
+    ? ({
+        "--garlic-x": `${garlic.x}vw`,
+        "--garlic-y": `${garlic.y}dvh`,
+        "--garlic-drift-x": `${garlic.driftX}px`,
+        "--garlic-drift-y": `${garlic.driftY}px`,
+      } as CSSProperties)
+    : undefined;
 
   return (
     <main className="gameShell">
@@ -1002,6 +1110,22 @@ export default function App() {
             {eatFeedback.points}
           </span>
         </div>
+      )}
+      {scoreBoostActive && (
+        <div className="scoreBoostBadge" role="status">
+          スコア2倍!!
+        </div>
+      )}
+      {garlic && phase === "playing" && (
+        <button
+          className="garlicItem"
+          type="button"
+          style={garlicStyle}
+          onClick={collectGarlic}
+          aria-label="ニンニクを取る"
+        >
+          <img src={ASSET_PATHS.garlic} alt="" draggable={false} />
+        </button>
       )}
       <GameHud
         score={score}

@@ -7,6 +7,7 @@ export const ASSET_PATHS = {
   tare: asset("assets/images/tare/tare.png"),
   vege: asset("assets/images/Vege/vege.png"),
   beer: asset("assets/images/beer/beer.png"),
+  garlic: asset("assets/images/meat/garlic-0.png"),
   cutIn: {
     0: asset("assets/images/logo/cool.png"),
     1: asset("assets/images/logo/good.png"),
@@ -39,6 +40,7 @@ export const ASSET_PATHS = {
     eatNo: asset("assets/audio/eat_ng.mp3"),
     eatVege: asset("assets/audio/eat.vege.mp3"),
     drink: asset("assets/audio/drink.mp3"),
+    power: asset("assets/audio/power.mp3"),
     wait: asset("assets/audio/wait.mp3"),
     bestScore: asset("assets/audio/best-score.mp3"),
     finish: asset("assets/audio/end.mp3"),

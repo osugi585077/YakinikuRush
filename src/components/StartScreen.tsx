@@ -12,13 +12,13 @@ const SCORE_RULES = [
   {
     className: "perfect",
     label: "\u6700\u9ad8",
-    score: "+50\u301c500",
+    score: "+50\u301c2000",
     image: ASSET_PATHS.meat("karubi", 2),
   },
   {
     className: "good",
     label: "\u751f\u713c\u3051",
-    score: "+5\u301c30",
+    score: "+5\u301c100",
     image: ASSET_PATHS.meat("karubi", 1),
   },
   {

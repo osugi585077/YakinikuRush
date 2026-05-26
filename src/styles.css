@@ -848,6 +848,59 @@ p {
   font-size: clamp(1.35rem, 6.2vw, 2.5rem);
 }
 
+.garlicItem {
+  position: fixed;
+  left: var(--garlic-x);
+  top: var(--garlic-y);
+  z-index: 62;
+  width: clamp(64px, 17vw, 104px);
+  aspect-ratio: 1;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+  transform: translate(-50%, -50%);
+  animation:
+    garlicFloat 1.25s ease-in-out infinite alternate,
+    garlicBlink 520ms steps(2, end) infinite;
+}
+
+.garlicItem::before {
+  content: "";
+  position: absolute;
+  inset: 9%;
+  border-radius: 999px;
+  background: rgba(255, 207, 63, 0.34);
+  box-shadow: 0 0 24px rgba(255, 207, 63, 0.92);
+}
+
+.garlicItem img {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(4px 6px 0 rgba(46, 26, 18, 0.42));
+  pointer-events: none;
+}
+
+.scoreBoostBadge {
+  position: fixed;
+  top: max(128px, calc(env(safe-area-inset-top) + 116px));
+  right: 12px;
+  z-index: 58;
+  border: 2px solid #2e1a12;
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #fff8ec;
+  background: #f04835;
+  box-shadow: 3px 4px 0 #2e1a12;
+  font-size: clamp(0.78rem, 3.6vw, 1.02rem);
+  font-weight: 950;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
 .resultScreen h1 {
   font-size: clamp(2.4rem, 11vw, 5rem);
   line-height: 1;
@@ -1003,6 +1056,27 @@ p {
   100% {
     opacity: 0;
     transform: translateX(22px) scale(0.92);
+  }
+}
+
+@keyframes garlicFloat {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) rotate(-7deg) scale(0.96);
+  }
+  100% {
+    transform: translate(-50%, -50%)
+      translate(var(--garlic-drift-x), var(--garlic-drift-y)) rotate(8deg)
+      scale(1.05);
+  }
+}
+
+@keyframes garlicBlink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.58;
   }
 }
 
