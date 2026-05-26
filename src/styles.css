@@ -884,20 +884,37 @@ p {
   pointer-events: none;
 }
 
-.scoreBoostBadge {
+.powerNotice {
   position: fixed;
-  top: max(128px, calc(env(safe-area-inset-top) + 116px));
-  right: 12px;
-  z-index: 58;
-  border: 2px solid #2e1a12;
-  border-radius: 8px;
-  padding: 8px 10px;
-  color: #fff8ec;
-  background: #f04835;
-  box-shadow: 3px 4px 0 #2e1a12;
-  font-size: clamp(0.78rem, 3.6vw, 1.02rem);
+  inset: 0;
+  z-index: 78;
+  display: grid;
+  place-items: center;
+  color: #ffcf3f;
+  font-size: clamp(2.3rem, 12vw, 5.8rem);
   font-weight: 950;
+  line-height: 1;
   letter-spacing: 0;
+  text-align: center;
+  text-shadow:
+    3px 0 #2e1a12,
+    -3px 0 #2e1a12,
+    0 3px #2e1a12,
+    0 -3px #2e1a12,
+    6px 7px 0 rgba(46, 26, 18, 0.42);
+  animation: powerNoticePop 1100ms cubic-bezier(0.18, 1.35, 0.32, 1) both;
+  pointer-events: none;
+}
+
+.powerFlash {
+  position: fixed;
+  inset: 0;
+  z-index: 77;
+  background:
+    radial-gradient(circle, rgba(255, 207, 63, 0.42), transparent 58%),
+    rgba(240, 72, 53, 0.24);
+  mix-blend-mode: screen;
+  animation: powerScreenFlash 950ms steps(6, end) both;
   pointer-events: none;
 }
 
@@ -1077,6 +1094,43 @@ p {
   }
   50% {
     opacity: 0.58;
+  }
+}
+
+@keyframes powerNoticePop {
+  0% {
+    opacity: 0;
+    transform: scale(0.68) rotate(-2deg);
+  }
+  18% {
+    opacity: 1;
+    transform: scale(1.1) rotate(1deg);
+  }
+  76% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translateY(-12px);
+  }
+}
+
+@keyframes powerScreenFlash {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  12%,
+  36%,
+  60%,
+  84% {
+    opacity: 0.9;
+  }
+  24%,
+  48%,
+  72% {
+    opacity: 0.18;
   }
 }
 

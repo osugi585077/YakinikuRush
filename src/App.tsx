@@ -77,9 +77,11 @@ type AudioEngine = {
 
 const DEFAULT_BGM_VOLUME = 0.5;
 const DEFAULT_SE_VOLUME = 1;
-const STEAK_CHANCE = 0.3;
+const STEAK_CHANCE = 0.2;
 const GARLIC_SCORE_THRESHOLD = 3_000;
 const SCORE_BOOST_MS = 10_000;
+const POWER_NOTICE_MS = 1_100;
+const POWER_FLASH_MS = 950;
 
 type GarlicItem = {
   id: number;
@@ -539,6 +541,8 @@ export default function App() {
   const [seVolume, setSeVolume] = useState(DEFAULT_SE_VOLUME);
   const [garlic, setGarlic] = useState<GarlicItem | null>(null);
   const [scoreBoostActive, setScoreBoostActive] = useState(false);
+  const [powerNoticeVisible, setPowerNoticeVisible] = useState(false);
+  const [powerFlashActive, setPowerFlashActive] = useState(false);
   const nextMeatId = useRef(1);
   const lastTick = useRef<number | null>(null);
   const tickRemainder = useRef(0);
@@ -551,6 +555,9 @@ export default function App() {
   const garlicSpawnedRef = useRef(false);
   const scoreBoostActiveRef = useRef(false);
   const scoreBoostTimerRef = useRef<number | null>(null);
+  const powerNoticeTimerRef = useRef<number | null>(null);
+  const powerFlashTimerRef = useRef<number | null>(null);
+  const finalCountdownSecondRef = useRef<number | null>(null);
 
   const multiplier = useMemo(() => getMultiplier(combo), [combo]);
 
@@ -641,7 +648,19 @@ export default function App() {
 
       setTimeLeftMs((current) => {
         const next = Math.max(0, current - elapsed);
+        const nextSecond = Math.ceil(next / 1000);
+
+        if (
+          next > 0 &&
+          next <= 5_000 &&
+          nextSecond !== finalCountdownSecondRef.current
+        ) {
+          finalCountdownSecondRef.current = nextSecond;
+          playBufferedSe(getAudioEngine(audioRef), "countdown");
+        }
+
         if (next === 0) {
+          finalCountdownSecondRef.current = 0;
           setPhase("ending");
         }
         return next;
@@ -797,6 +816,12 @@ export default function App() {
       if (scoreBoostTimerRef.current !== null) {
         window.clearTimeout(scoreBoostTimerRef.current);
       }
+      if (powerNoticeTimerRef.current !== null) {
+        window.clearTimeout(powerNoticeTimerRef.current);
+      }
+      if (powerFlashTimerRef.current !== null) {
+        window.clearTimeout(powerFlashTimerRef.current);
+      }
     };
   }, []);
 
@@ -828,6 +853,7 @@ export default function App() {
     setDrag(null);
     nextMeatId.current = 1;
     garlicSpawnedRef.current = false;
+    finalCountdownSecondRef.current = null;
     lastTick.current = null;
     tickRemainder.current = 0;
   }
@@ -892,6 +918,7 @@ export default function App() {
     setTimeLeftMs(GAME_DURATION_MS);
     setCountdownMs(COUNTDOWN_DURATION_MS);
     garlicSpawnedRef.current = false;
+    finalCountdownSecondRef.current = null;
     lastTick.current = null;
     tickRemainder.current = 0;
   }
@@ -1031,10 +1058,18 @@ export default function App() {
     playBufferedSe(engine, "power");
     setGarlic(null);
     setScoreBoostActive(true);
+    setPowerNoticeVisible(true);
+    setPowerFlashActive(true);
     scoreBoostActiveRef.current = true;
 
     if (scoreBoostTimerRef.current !== null) {
       window.clearTimeout(scoreBoostTimerRef.current);
+    }
+    if (powerNoticeTimerRef.current !== null) {
+      window.clearTimeout(powerNoticeTimerRef.current);
+    }
+    if (powerFlashTimerRef.current !== null) {
+      window.clearTimeout(powerFlashTimerRef.current);
     }
 
     scoreBoostTimerRef.current = window.setTimeout(() => {
@@ -1042,6 +1077,14 @@ export default function App() {
       scoreBoostActiveRef.current = false;
       scoreBoostTimerRef.current = null;
     }, SCORE_BOOST_MS);
+    powerNoticeTimerRef.current = window.setTimeout(() => {
+      setPowerNoticeVisible(false);
+      powerNoticeTimerRef.current = null;
+    }, POWER_NOTICE_MS);
+    powerFlashTimerRef.current = window.setTimeout(() => {
+      setPowerFlashActive(false);
+      powerFlashTimerRef.current = null;
+    }, POWER_FLASH_MS);
   }
 
   function clearScoreBoost() {
@@ -1051,6 +1094,20 @@ export default function App() {
     }
     scoreBoostActiveRef.current = false;
     setScoreBoostActive(false);
+    clearPowerEffects();
+  }
+
+  function clearPowerEffects() {
+    if (powerNoticeTimerRef.current !== null) {
+      window.clearTimeout(powerNoticeTimerRef.current);
+      powerNoticeTimerRef.current = null;
+    }
+    if (powerFlashTimerRef.current !== null) {
+      window.clearTimeout(powerFlashTimerRef.current);
+      powerFlashTimerRef.current = null;
+    }
+    setPowerNoticeVisible(false);
+    setPowerFlashActive(false);
   }
 
   if (phase === "ready") {
@@ -1111,8 +1168,9 @@ export default function App() {
           </span>
         </div>
       )}
-      {scoreBoostActive && (
-        <div className="scoreBoostBadge" role="status">
+      {powerFlashActive && <div className="powerFlash" aria-hidden="true" />}
+      {powerNoticeVisible && (
+        <div className="powerNotice" role="status">
           スコア2倍!!
         </div>
       )}
