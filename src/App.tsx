@@ -543,6 +543,9 @@ export default function App() {
   const [scoreBoostActive, setScoreBoostActive] = useState(false);
   const [powerNoticeVisible, setPowerNoticeVisible] = useState(false);
   const [powerFlashActive, setPowerFlashActive] = useState(false);
+  const [finalCountdownNumber, setFinalCountdownNumber] = useState<number | null>(
+    null,
+  );
   const nextMeatId = useRef(1);
   const lastTick = useRef<number | null>(null);
   const tickRemainder = useRef(0);
@@ -656,11 +659,13 @@ export default function App() {
           nextSecond !== finalCountdownSecondRef.current
         ) {
           finalCountdownSecondRef.current = nextSecond;
+          setFinalCountdownNumber(nextSecond);
           playBufferedSe(getAudioEngine(audioRef), "countdown");
         }
 
         if (next === 0) {
           finalCountdownSecondRef.current = 0;
+          setFinalCountdownNumber(null);
           setPhase("ending");
         }
         return next;
@@ -695,6 +700,7 @@ export default function App() {
     setDrag(null);
     setGarlic(null);
     clearScoreBoost();
+    setFinalCountdownNumber(null);
 
     const timerId = window.setTimeout(() => {
       setPhase("finished");
@@ -850,6 +856,7 @@ export default function App() {
     setBestNoticeVisible(false);
     setGarlic(null);
     clearScoreBoost();
+    setFinalCountdownNumber(null);
     setDrag(null);
     nextMeatId.current = 1;
     garlicSpawnedRef.current = false;
@@ -919,6 +926,7 @@ export default function App() {
     setCountdownMs(COUNTDOWN_DURATION_MS);
     garlicSpawnedRef.current = false;
     finalCountdownSecondRef.current = null;
+    setFinalCountdownNumber(null);
     lastTick.current = null;
     tickRemainder.current = 0;
   }
@@ -1230,6 +1238,11 @@ export default function App() {
       {phase === "countdown" && (
         <div className="centerOverlay countdownOverlay" aria-live="assertive">
           <span>{countdownNumber}</span>
+        </div>
+      )}
+      {phase === "playing" && finalCountdownNumber !== null && (
+        <div className="centerOverlay finalCountdownOverlay" aria-live="assertive">
+          <span>{finalCountdownNumber}</span>
         </div>
       )}
       {isPaused && (

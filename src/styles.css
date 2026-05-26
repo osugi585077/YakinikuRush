@@ -777,6 +777,20 @@ p {
   animation: countdownPunch 980ms ease-in-out infinite;
 }
 
+.finalCountdownOverlay {
+  z-index: 66;
+  pointer-events: none;
+}
+
+.finalCountdownOverlay span {
+  color: #ffcf3f;
+  font-size: clamp(3.6rem, 18vw, 7rem);
+  font-weight: 950;
+  line-height: 1;
+  text-shadow: 4px 5px 0 #2e1a12;
+  animation: finalCountdownPop 520ms cubic-bezier(0.18, 1.35, 0.32, 1) both;
+}
+
 .endingOverlay {
   color: #ffcf3f;
   font-size: clamp(1.8rem, 8vw, 4.4rem);
@@ -862,8 +876,8 @@ p {
   touch-action: manipulation;
   transform: translate(-50%, -50%);
   animation:
-    garlicFloat 1.25s ease-in-out infinite alternate,
-    garlicBlink 520ms steps(2, end) infinite;
+    garlicFloat 620ms ease-in-out infinite alternate,
+    garlicBlink 320ms steps(2, end) infinite;
 }
 
 .garlicItem::before {
@@ -1025,6 +1039,21 @@ p {
   }
   100% {
     transform: scale(0.92);
+  }
+}
+
+@keyframes finalCountdownPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  28% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
