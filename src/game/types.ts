@@ -1,4 +1,4 @@
-export type MeatKind = "tan" | "karubi" | "harami" | "horumon";
+export type MeatKind = "tan" | "karubi" | "harami" | "horumon" | "steak";
 
 export type CookLevel = 0 | 1 | 2 | 3;
 

@@ -43,11 +43,11 @@ type AudioEngine = {
   bgmVolume: number;
   seVolume: number;
   unlocked: boolean;
-  sePools: Partial<Record<"eatOk" | "eatNo" | "eatVege" | "drink", HTMLAudioElement[]>>;
+  sePools: Partial<Record<SeKey, HTMLAudioElement[]>>;
   audioContext: AudioContext | null;
   sizzleBuffers: AudioBuffer[];
   sizzleBufferPromise: Promise<AudioBuffer[]> | null;
-  seBuffers: Partial<Record<"eatOk" | "eatNo" | "eatVege" | "drink", AudioBuffer>>;
+  seBuffers: Partial<Record<SeKey, AudioBuffer>>;
   seBufferPromise: Promise<void> | null;
   cookingGain: GainNode | null;
   cookingSource: AudioBufferSourceNode | null;
@@ -71,6 +71,28 @@ type AudioEngine = {
 
 const DEFAULT_BGM_VOLUME = 0.5;
 const DEFAULT_SE_VOLUME = 1;
+const STEAK_CHANCE = 0.1;
+
+type SeKey =
+  | "countdown"
+  | "start"
+  | "kettei"
+  | "finish"
+  | "eatOk"
+  | "eatNo"
+  | "eatVege"
+  | "drink";
+
+const SE_SOURCES: Record<SeKey, string> = {
+  countdown: ASSET_PATHS.audio.countdown,
+  start: ASSET_PATHS.audio.start,
+  kettei: ASSET_PATHS.audio.kettei,
+  finish: ASSET_PATHS.audio.finish,
+  eatOk: ASSET_PATHS.audio.eatOk,
+  eatNo: ASSET_PATHS.audio.eatNo,
+  eatVege: ASSET_PATHS.audio.eatVege,
+  drink: ASSET_PATHS.audio.drink,
+};
 
 function createAudio(src: string, volume: number) {
   const audio = new Audio(src);
@@ -111,29 +133,18 @@ async function loadSizzleBuffers(engine: AudioEngine) {
 }
 
 async function loadSeBuffers(engine: AudioEngine) {
-  if (
-    engine.seBuffers.eatOk &&
-    engine.seBuffers.eatNo &&
-    engine.seBuffers.eatVege &&
-    engine.seBuffers.drink
-  ) {
+  if (Object.keys(SE_SOURCES).every((key) => engine.seBuffers[key as SeKey])) {
     return;
   }
 
   if (!engine.seBufferPromise) {
     const context = getAudioContext(engine);
-    const entries = [
-      ["eatOk", ASSET_PATHS.audio.eatOk],
-      ["eatNo", ASSET_PATHS.audio.eatNo],
-      ["eatVege", ASSET_PATHS.audio.eatVege],
-      ["drink", ASSET_PATHS.audio.drink],
-    ] as const;
 
     engine.seBufferPromise = Promise.all(
-      entries.map(async ([key, source]) => {
+      Object.entries(SE_SOURCES).map(async ([key, source]) => {
         const response = await fetch(source);
         const buffer = await response.arrayBuffer();
-        engine.seBuffers[key] = await context.decodeAudioData(buffer);
+        engine.seBuffers[key as SeKey] = await context.decodeAudioData(buffer);
       }),
     ).then(() => undefined);
   }
@@ -157,6 +168,10 @@ function getAudioEngine(ref: MutableRefObject<AudioEngine | null>) {
       cookingRequested: false,
       cookingStarting: false,
       sePools: {
+        countdown: createAudioPool(ASSET_PATHS.audio.countdown, DEFAULT_SE_VOLUME),
+        start: createAudioPool(ASSET_PATHS.audio.start, DEFAULT_SE_VOLUME * 0.96),
+        kettei: createAudioPool(ASSET_PATHS.audio.kettei, DEFAULT_SE_VOLUME * 0.85),
+        finish: createAudioPool(ASSET_PATHS.audio.finish, DEFAULT_SE_VOLUME * 0.96),
         eatOk: createAudioPool(ASSET_PATHS.audio.eatOk, DEFAULT_SE_VOLUME * 0.96),
         eatNo: createAudioPool(ASSET_PATHS.audio.eatNo, DEFAULT_SE_VOLUME * 0.96),
         eatVege: createAudioPool(ASSET_PATHS.audio.eatVege, DEFAULT_SE_VOLUME),
@@ -224,6 +239,18 @@ function applyAudioVolumes(engine: AudioEngine) {
   engine.sePools.drink?.forEach((audio) => {
     audio.volume = engine.seVolume * 0.95;
   });
+  engine.sePools.countdown?.forEach((audio) => {
+    audio.volume = engine.seVolume;
+  });
+  engine.sePools.start?.forEach((audio) => {
+    audio.volume = engine.seVolume * 0.96;
+  });
+  engine.sePools.kettei?.forEach((audio) => {
+    audio.volume = engine.seVolume * 0.85;
+  });
+  engine.sePools.finish?.forEach((audio) => {
+    audio.volume = engine.seVolume * 0.96;
+  });
 }
 
 function playOneShot(audio: HTMLAudioElement) {
@@ -241,10 +268,7 @@ function playPooledOneShot(pool: HTMLAudioElement[] | undefined) {
   void audio.play().catch(() => {});
 }
 
-function playBufferedSe(
-  engine: AudioEngine,
-  key: "eatOk" | "eatNo" | "eatVege" | "drink",
-) {
+function playBufferedSe(engine: AudioEngine, key: SeKey) {
   const buffer = engine.seBuffers[key];
   if (!buffer) {
     playPooledOneShot(engine.sePools[key]);
@@ -260,7 +284,12 @@ function playBufferedSe(
   gain.gain.value =
     key === "drink"
       ? engine.seVolume * 0.95
-      : key === "eatOk" || key === "eatNo"
+      : key === "kettei"
+        ? engine.seVolume * 0.85
+        : key === "eatOk" ||
+            key === "eatNo" ||
+            key === "start" ||
+            key === "finish"
         ? engine.seVolume * 0.96
         : engine.seVolume;
   source.connect(gain);
@@ -276,6 +305,8 @@ function unlockAudio(engine: AudioEngine) {
   void context.resume().catch(() => {});
   void loadSizzleBuffers(engine).catch(() => {});
   void loadSeBuffers(engine).catch(() => {});
+  engine.wait.load();
+  engine.result.load();
 }
 
 function stopCookingSound(engine: AudioEngine) {
@@ -392,6 +423,10 @@ function createGrillMeat(
   };
 }
 
+function choosePlateMeatKind(kind: PlateMeat["kind"]) {
+  return Math.random() < STEAK_CHANCE ? "steak" : kind;
+}
+
 function pointIsInside(
   ref: RefObject<HTMLElement | null>,
   x: number,
@@ -504,24 +539,24 @@ export default function App() {
     const timers: number[] = [];
 
     setCountdownMs(COUNTDOWN_DURATION_MS);
-    playOneShot(engine.countdown);
+    playBufferedSe(engine, "countdown");
 
     timers.push(
       window.setTimeout(() => {
         setCountdownMs(2_000);
-        playOneShot(engine.countdown);
+        playBufferedSe(engine, "countdown");
       }, 1_000),
     );
     timers.push(
       window.setTimeout(() => {
         setCountdownMs(1_000);
-        playOneShot(engine.countdown);
+        playBufferedSe(engine, "countdown");
       }, 2_000),
     );
     timers.push(
       window.setTimeout(() => {
         setCountdownMs(0);
-        playOneShot(engine.finish);
+        playBufferedSe(engine, "finish");
         lastTick.current = null;
         tickRemainder.current = 0;
         setPhase("playing");
@@ -585,7 +620,7 @@ export default function App() {
     stopCookingSound(engine);
     stopWaitSound(engine);
     stopTitleSound(engine);
-    playOneShot(engine.finish);
+    playBufferedSe(engine, "finish");
     setDrag(null);
 
     const timerId = window.setTimeout(() => {
@@ -716,7 +751,7 @@ export default function App() {
     stopTitleSound(engine);
     clearEatFeedback();
     if (playStartSound) {
-      playOneShot(engine.start);
+      playBufferedSe(engine, "start");
     }
 
     setPhase("countdown");
@@ -739,7 +774,7 @@ export default function App() {
 
   function restartGame() {
     const engine = getAudioEngine(audioRef);
-    playOneShot(engine.kettei);
+    playBufferedSe(engine, "kettei");
     startGame(false);
   }
 
@@ -780,7 +815,7 @@ export default function App() {
 
   function returnToTitle() {
     const engine = getAudioEngine(audioRef);
-    playOneShot(engine.kettei);
+    playBufferedSe(engine, "kettei");
     stopCookingSound(engine);
     stopWaitSound(engine);
     startTitleSound(engine);
@@ -805,8 +840,9 @@ export default function App() {
     if (phase !== "playing") return;
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    const kind = choosePlateMeatKind(plate.kind);
     setDrag({
-      source: { type: "plate", plateId: plate.plateId, kind: plate.kind },
+      source: { type: "plate", plateId: plate.plateId, kind },
       x: event.clientX,
       y: event.clientY,
     });

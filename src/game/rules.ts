@@ -18,6 +18,7 @@ export const MEAT_LABELS: Record<MeatKind, string> = {
   karubi: "\u30ab\u30eb\u30d3",
   harami: "\u30cf\u30e9\u30df",
   horumon: "\u30db\u30eb\u30e2\u30f3",
+  steak: "\u30b9\u30c6\u30fc\u30ad",
 };
 
 export const LEVEL_LABELS: Record<CookLevel, string> = {
@@ -32,6 +33,7 @@ const LEVEL_THRESHOLDS: Record<MeatKind, [number, number, number]> = {
   karubi: [3_000, 6_000, 9_000],
   harami: [6_000, 10_000, 15_000],
   horumon: [15_000, 20_000, 25_000],
+  steak: [15_000, 27_000, 28_000],
 };
 
 const SCORE_BY_KIND_AND_LEVEL: Record<MeatKind, Record<CookLevel, number>> = {
@@ -39,6 +41,7 @@ const SCORE_BY_KIND_AND_LEVEL: Record<MeatKind, Record<CookLevel, number>> = {
   karubi: { 0: 0, 1: 10, 2: 100, 3: -50 },
   harami: { 0: 0, 1: 20, 2: 300, 3: -50 },
   horumon: { 0: 0, 1: 30, 2: 500, 3: -50 },
+  steak: { 0: 0, 1: 100, 2: 2_000, 3: -50 },
 };
 
 export function getCookLevel(kind: MeatKind, ageMs: number): CookLevel {

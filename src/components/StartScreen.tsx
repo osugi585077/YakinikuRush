@@ -39,7 +39,7 @@ export function StartScreen({ highScore, onStart }: StartScreenProps) {
   return (
     <main className="screen startScreen">
       <div className="titleStack">
-        <span className="versionBadge">ver:1.0</span>
+        <span className="versionBadge">ver：1.1</span>
         <span className="kicker">60 SECOND GRILL BATTLE</span>
         <img
           className="titleLogo"

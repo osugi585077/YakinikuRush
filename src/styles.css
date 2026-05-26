@@ -560,6 +560,10 @@ p {
   aspect-ratio: 1.18 / 1;
 }
 
+.meat-steak {
+  aspect-ratio: 1.42 / 1;
+}
+
 .meat-level-0 {
   background: transparent;
 }
