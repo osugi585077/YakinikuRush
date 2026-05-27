@@ -1200,9 +1200,6 @@ export default function App() {
         multiplier={multiplier}
         timeLeftMs={timeLeftMs}
       />
-      <button className="pauseButton" type="button" onClick={togglePause}>
-        MENU
-      </button>
       <div className="playArea">
         <Grill
           meats={meats}
@@ -1225,6 +1222,11 @@ export default function App() {
         </div>
       </div>
       <MeatPlates plates={PLATE_MEATS} onPlateDragStart={beginPlateDrag} />
+      <nav className="gameMenuBar" aria-label="ゲームメニュー">
+        <button className="pauseButton" type="button" onClick={togglePause}>
+          PAUSE
+        </button>
+      </nav>
       <footer className="feedbackBar" aria-live="polite">
         {scoreEvent ? (
           <span className="eventText">

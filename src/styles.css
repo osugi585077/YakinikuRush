@@ -58,7 +58,7 @@ button {
 .gameShell {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto min-content;
+  grid-template-rows: auto minmax(0, 1fr) auto auto min-content;
   gap: clamp(5px, 1.1vh, 10px);
 }
 
@@ -209,6 +209,47 @@ p {
   font-weight: 900;
 }
 
+.changelogOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(46, 26, 18, 0.58);
+}
+
+.changelogPanel {
+  width: min(100%, 520px);
+  max-height: min(78vh, 560px);
+  display: grid;
+  gap: 12px;
+  border: 3px solid #2e1a12;
+  border-radius: 8px;
+  padding: 18px;
+  color: #23120c;
+  background: #fff8ec;
+  box-shadow: 7px 8px 0 rgba(46, 26, 18, 0.58);
+}
+
+.changelogPanel h2 {
+  margin: 0;
+  font-size: clamp(1.4rem, 6vw, 2rem);
+}
+
+.changelogPanel pre {
+  max-height: min(48vh, 340px);
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  color: #4b3128;
+  font: inherit;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 .primaryButton {
   min-height: 60px;
   cursor: pointer;
@@ -288,12 +329,8 @@ p {
 }
 
 .pauseButton {
-  position: fixed;
-  left: 12px;
-  top: max(88px, calc(env(safe-area-inset-top) + 82px));
-  z-index: 80;
-  min-width: 86px;
-  min-height: 42px;
+  min-width: 112px;
+  min-height: 38px;
   border: 2px solid #2e1a12;
   border-radius: 8px;
   color: #23120c;
@@ -317,6 +354,17 @@ p {
   padding-bottom: clamp(48px, 10vh, 76px);
   overflow: hidden;
   touch-action: none;
+}
+
+.gameMenuBar {
+  min-height: 46px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #2e1a12;
+  border-radius: 8px;
+  padding: 5px 8px;
+  background: #fff8ec;
+  box-shadow: 3px 3px 0 #2e1a12;
 }
 
 .grillStage {
@@ -1227,7 +1275,7 @@ p {
   }
 
   .gameShell {
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
     gap: clamp(4px, 0.9vh, 7px);
   }
 
@@ -1251,11 +1299,14 @@ p {
   }
 
   .pauseButton {
-    top: max(66px, calc(env(safe-area-inset-top) + 62px));
-    left: 8px;
-    min-width: 74px;
+    min-width: 92px;
     min-height: 36px;
     font-size: 0.75rem;
+  }
+
+  .gameMenuBar {
+    min-height: 42px;
+    padding: 4px 6px;
   }
 
   .playArea {
@@ -1386,7 +1437,7 @@ p {
 @media (max-height: 640px) {
   .pauseButton {
     min-height: 34px;
-    min-width: 70px;
+    min-width: 86px;
     font-size: 0.72rem;
   }
 
