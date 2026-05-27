@@ -209,7 +209,13 @@ p {
   font-weight: 900;
 }
 
-.changelogOverlay {
+.titleInfoButtons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.infoOverlay {
   position: fixed;
   inset: 0;
   z-index: 120;
@@ -219,7 +225,7 @@ p {
   background: rgba(46, 26, 18, 0.58);
 }
 
-.changelogPanel {
+.infoPanel {
   width: min(100%, 520px);
   max-height: min(78vh, 560px);
   display: grid;
@@ -232,12 +238,12 @@ p {
   box-shadow: 7px 8px 0 rgba(46, 26, 18, 0.58);
 }
 
-.changelogPanel h2 {
+.infoPanel h2 {
   margin: 0;
   font-size: clamp(1.4rem, 6vw, 2rem);
 }
 
-.changelogPanel pre {
+.infoPanel pre {
   max-height: min(48vh, 340px);
   margin: 0;
   overflow: auto;
@@ -765,6 +771,11 @@ p {
   background: rgba(32, 18, 13, 0.52);
   text-align: center;
   pointer-events: none;
+}
+
+.countdownOverlay,
+.finalCountdownOverlay {
+  background: rgba(32, 18, 13, 0.16);
 }
 
 .menuOverlay {
