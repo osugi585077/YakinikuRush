@@ -77,6 +77,11 @@ export function MeatVisual({
       type="button"
       aria-label={`${MEAT_LABELS[kind]} ${LEVEL_LABELS[level]}`}
       onPointerDown={onPointerDown}
+      onTouchStart={(event) => {
+        if (draggable) {
+          event.preventDefault();
+        }
+      }}
       data-draggable={draggable ? "true" : "false"}
     >
       <img

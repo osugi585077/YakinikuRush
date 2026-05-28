@@ -27,9 +27,17 @@ body {
   -webkit-touch-callout: none;
 }
 
+html.isDraggingMeat,
+html.isDraggingMeat body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
 button {
   font: inherit;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 #root {
@@ -556,6 +564,7 @@ p {
     radial-gradient(circle at 50% 58%, #fff9f0 0 48%, #e7d7c0 49% 64%, #fff9f0 65%),
     #fff9f0;
   box-shadow: 3px 4px 0 #2e1a12;
+  touch-action: none;
 }
 
 .plateLabel {
@@ -575,6 +584,7 @@ p {
   box-shadow: none;
   overflow: hidden;
   touch-action: none;
+  -webkit-user-drag: none;
   background: transparent;
   padding: 0;
   filter: drop-shadow(4px 5px 0 rgba(0, 0, 0, 0.32));

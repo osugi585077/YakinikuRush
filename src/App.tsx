@@ -759,6 +759,8 @@ export default function App() {
   useEffect(() => {
     if (!drag) return;
 
+    document.documentElement.classList.add("isDraggingMeat");
+
     let dragFrameId = 0;
     let nextDragPoint = {
       x: drag.x,
@@ -798,15 +800,22 @@ export default function App() {
       event.preventDefault();
     };
 
+    const blockTouchStart = (event: TouchEvent) => {
+      event.preventDefault();
+    };
+
     window.addEventListener("pointermove", handleMove, { passive: false });
     window.addEventListener("pointerup", handleUp, { once: true });
     window.addEventListener("pointercancel", handleUp, { once: true });
+    window.addEventListener("touchstart", blockTouchStart, { passive: false });
     window.addEventListener("touchmove", blockTouchMove, { passive: false });
 
     return () => {
+      document.documentElement.classList.remove("isDraggingMeat");
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
       window.removeEventListener("pointercancel", handleUp);
+      window.removeEventListener("touchstart", blockTouchStart);
       window.removeEventListener("touchmove", blockTouchMove);
       if (dragFrameId !== 0) {
         window.cancelAnimationFrame(dragFrameId);
